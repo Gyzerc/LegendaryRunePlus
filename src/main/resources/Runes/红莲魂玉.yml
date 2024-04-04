@@ -1,0 +1,22 @@
+display: '&c红莲铭文 &fLv.%level%'
+material: INK_SACK
+data: 1
+custom-model-data: 0
+lore:
+  - ''
+  - '&f镶嵌率: &7%chance%%'
+  - '&f铭文属性'
+  - '%attr%'
+  - '&8* 该铭文同一页只能镶嵌 2 个'
+settings:
+  #铭文类型
+  type: 红色铭文
+  #该铭文最高等级
+  level: 5
+  #更新的属性
+  attrs:
+    - ' &7- 攻击力 &a+{%level%*5}'
+  #镶嵌成功率
+  chance: '100 - (%level% * 10)'
+  #同一页铭文也中最多能镶嵌多少个该类型的铭文
+  max: 2

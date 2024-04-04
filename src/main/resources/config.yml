@@ -1,0 +1,63 @@
+#挂钩的属性插件
+#可选： AP3 / AP2 / SX3 / SX2
+AttributePlugin: AP3
+#数据存储方法： MySQL / SQLite
+Store: SQLite
+Mysql:
+  address: localhost
+  port: 3306
+  database: test
+  user: root
+  password: 123456
+HikariCP:
+  connectionTimeout: 30000
+  #连接超时时间 默认值：30000（30秒）
+  #Default connection timeout value: 30000 (30 seconds)
+  minimumIdle: 10
+  #最小空闲连接数
+  #Minimum number of idle connections
+  maximumPoolSize: 50
+  #池允许达到的最大大小，包括空闲和正在使用的连接
+  #The maximum allowed size of the pool, including idle and in use connections
+sounds:
+  put-successfully: entity_firework_launch
+  put-fail: entity_item_break
+  put-already-has: ui_button_click
+  unlock: block_note_bell
+  unequip: block_iron_door_open
+lang:
+  plugin: '&f[&bLegendary&3RunePlus&f] '
+  unknown_command: '&c未知指令'
+  permission: '&c你没有使用该命令的权限'
+  notonline: '&c该玩家不在线'
+  null-player: '&c该玩家暂无铭文数据.'
+  notinteger: '&c请输入正确的整数'
+  not-has-page: '&7不存在该铭文页.'
+  not-has-slot: '&7该铭文页内不存在该铭文槽位.'
+  not-has-rune: '&7该铭文不存在.'
+  not-has-rune-level: '&7该铭文最大等级为 &e%level%'
+  give-rune: '&e你给予了玩家 &3%player% &e铭文 %display% &f×%amount%'
+  received-rune: '&a你获得了 %display% &f×%amount%'
+  not-rune: '&f该物品并不是铭文！'
+  cant-put-type: '&c该槽位只能放置 %type% &c类的铭文.'
+  cant-put-amount: '&f请保证指针上的铭文只有&e 1 &f个！'
+  cant-put-has: '&c该槽位已经镶嵌了铭文.'
+  cant-put-max: '&c当前铭文页已镶嵌该类型的铭文数量已经达到上限.'
+  cant-put-level: '&c该铭文的等级未满足此槽位的要求.'
+  not-enough-vault: '&c你的游戏币不足 &f%amount%'
+  not-enough-points: '&c你的点券不足 &f%amount%'
+  not-enough-level: '&c你的等级不足 &f%amount%'
+  not-enough-exp: '&c你的经验不足 &f%amount%'
+  not-enough-depend: '&c你未解锁前置铭文槽位 &f%display%'
+  not-enough-item: '&c你背包内的 &f%material% &c不足 &f%amount% &c个.'
+  not-enough-customitem: '&c你背包内的 &f%display% &c不足 &f%amount% &c个.'
+  null-rune-type: '&4槽位类型出错, 不存在 %type% &4的槽位类型, 请联系管理员.'
+  rune-put-fail: '&c镶嵌失败, 你的铭文灰飞烟灭...'
+  rune-put-successfully: '&a镶嵌成功！'
+  rune-unequip-successfully: '&a成功卸下 %display%'
+  rune-unequip-fail: '&c卸下铭文失败....'
+  unlock-slot: '&a你解锁了 %display%'
+  unlock-slot-admin: '&b你为玩家 &e%player% &b解锁了 &e%page% &b的铭文槽位 &e%slot%'
+  lock-slot: '&c位于 %page% &c内的铭文槽位 %slot% &c已被重新上锁...'
+  lock-slot-admin: '&e你将玩家 &f%player% &e铭文页 &f%page% &e的 %slot% &e上锁.'
+
