@@ -49,7 +49,8 @@ public class OpenCommand extends com.gyzer.Commands.Builder.CommandProvider {
                     }
                 }
                 if (senderPlayer.hasPermission("LegendaryRunePlus.open.*") || senderPlayer.hasPermission("LegendaryRunePlus.open."+id)) {
-                    Panel panel = new Panel((Player) sender,uuid,page);
+                    Panel panel = new Panel((Player) sender, uuid, page);
+                    panel.open();
                     return;
                 }
                 sender.sendMessage(configManager.lang_plugin+configManager.lang_permission);

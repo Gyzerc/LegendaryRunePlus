@@ -70,9 +70,7 @@ public class UserData {
         }
         SlotUnlockEvent e = new SlotUnlockEvent(p,pageName,slotId);
         Bukkit.getPluginManager().callEvent(e);
-        if (e.isCancelled()) {
-            return;
-        }
+
 
         List<String> unlock = unlocks.getOrDefault(pageName,new ArrayList<>());
         unlock.add(slotId);
@@ -108,38 +106,33 @@ public class UserData {
             RuneUnEquipEvent e = new RuneUnEquipEvent(p,pageName,slotId);
             Bukkit.getPluginManager().callEvent(e);
 
-            if (!e.isCancelled()) {
-                runePageData.remove(slotId);
-                datas.put(pageName, runePageData);
 
-                update(false);
-                updateAttributes();
-            }
+            runePageData.remove(slotId);
+            datas.put(pageName, runePageData);
+            update(false);
+            updateAttributes();
+
         }
     }
 
     public void putRune(Player p,String pageName,String slotId,ItemStack i) {
-        RunePutEvent e = new RunePutEvent(p,pageName,slotId,i);
-        Bukkit.getPluginManager().callEvent(e);
-        if (!e.isCancelled()) {
-            if (e.getChange() != null) {
-                i = e.getChange();
-            }
-            RunePageData runePageData = datas.getOrDefault(pageName, new RunePageData(pageName, new HashMap<>(), new HashMap<>(), new HashMap<>()));
 
-            NBTItem nbtItem = new NBTItem(i.clone());
-            List<String> attrs = new ArrayList<>();
-            String str = nbtItem.getString("LegendaryRunePlus_Attrs");
-            if (str != null) {
-                attrs = new Gson().fromJson(str,List.class);
-            }
-            String type = nbtItem.getString("LegendaryRunePlus_Id");
-            runePageData.add(slotId, attrs, i , type);
-            datas.put(pageName, runePageData);
 
-            update(false);
-            updateAttributes();
+        RunePageData runePageData = datas.getOrDefault(pageName, new RunePageData(pageName, new HashMap<>(), new HashMap<>(), new HashMap<>()));
+
+        NBTItem nbtItem = new NBTItem(i.clone());
+        List<String> attrs = new ArrayList<>();
+        String str = nbtItem.getString("LegendaryRunePlus_Attrs");
+        if (str != null) {
+            attrs = new Gson().fromJson(str, List.class);
         }
+        String type = nbtItem.getString("LegendaryRunePlus_Id");
+        runePageData.add(slotId, attrs, i, type);
+        datas.put(pageName, runePageData);
+
+        update(false);
+        updateAttributes();
+
     }
 
     public int getPutAmount(String pageName,String runeId) {

@@ -31,11 +31,11 @@ import java.util.function.Function;
 
 public class Panel implements InventoryHolder {
     private final LegendaryRunePlus legendaryRunePlus = LegendaryRunePlus.getLegendaryRunePlus();
-    private Inventory inv;
-    private Player p;
-    private UUID target;
-    private PanelReader panelReader;
-    private HashMap<Integer, MenuItem> menuItem;
+    private final Inventory inv;
+    private final Player p;
+    private final UUID target;
+    private final PanelReader panelReader;
+    private final HashMap<Integer, MenuItem> menuItem;
     public Panel(Player opener,UUID target, PanelReader panelReader) {
         this.p = opener;
         this.target = target;
@@ -142,7 +142,6 @@ public class Panel implements InventoryHolder {
                 inv.setItem(integer , menuItem.getItem());
             }
         }));
-        open();
     }
 
     public String getPageName() {
@@ -211,8 +210,8 @@ public class Panel implements InventoryHolder {
         return p;
     }
 
-    private void open() {
-        p.openInventory(inv);
+    public void open() {
+        Bukkit.getScheduler().runTask(legendaryRunePlus,()->p.openInventory(inv));
     }
 
     @NotNull
@@ -303,11 +302,12 @@ public class Panel implements InventoryHolder {
                                                             configManager.sound_put_successfully.ifPresent(s -> p.playSound(p.getLocation(),s,1,1));
                                                             p.sendMessage(configManager.lang_plugin + configManager.lang_rune_put_successfully);
                                                             ItemStack put = putItem.clone();
-                                                            data.putRune(p,pageId,slotId,put);
-                                                            e.setCurrentItem(put);
                                                             putItem.setAmount(0);
 
-                                                            new Panel(p,p.getUniqueId(),panelReader);
+                                                            data.putRune(p,pageId,slotId,put);
+                                                            e.setCurrentItem(put);
+
+                                                            new Panel(p,target,panelReader).open();
                                                             return;
                                                         }
                                                         putItem.setAmount(0);
@@ -337,7 +337,7 @@ public class Panel implements InventoryHolder {
 
                                             configManager.sound_unlock.ifPresent(s -> p.playSound(p.getLocation(), s, 1, 1));
                                             p.sendMessage(configManager.lang_plugin + configManager.lang_unlock_slot.replace("%display%" ,panelReader.getRuneSlotDisplayById(slotId)));
-                                            new Panel(p, p.getUniqueId(), panelReader);
+                                            new Panel(p, target, getPanelReader()).open();
                                         }
                                     }
                                 }
@@ -371,7 +371,7 @@ public class Panel implements InventoryHolder {
                                     p.sendMessage(configManager.lang_plugin + configManager.lang_rune_unequip_successfully.replace("%display%",display));
                                     p.getInventory().addItem(runeItem);
                                     data.unEquipRune(p,pageId,slotId);
-                                    new Panel(p,p.getUniqueId(),panelReader);
+                                    new Panel(p,target,panelReader).open();
                                 }
                             }
                     }

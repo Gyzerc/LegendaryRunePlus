@@ -63,7 +63,7 @@ public class LegendaryCommands implements CommandExecutor, TabExecutor {
                 sender.sendMessage(configManager.lang_plugin+configManager.lang_unknown_command);
                 return false;
             }
-            if (sender.hasPermission(cmd.getPermission())) {
+            if ( cmd.getPermission().isEmpty() || sender.hasPermission(cmd.getPermission()) ) {
                 if (cmd.getLength().contains(length)) {
                     cmd.handle(sender, strings);
                     return true;
