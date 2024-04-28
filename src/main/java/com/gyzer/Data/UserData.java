@@ -1,6 +1,7 @@
 package com.gyzer.Data;
 
 import com.google.gson.Gson;
+import com.gyzer.API.Events.RuneAttributeUpdateEvent;
 import com.gyzer.API.Events.RunePutEvent;
 import com.gyzer.API.Events.RuneUnEquipEvent;
 import com.gyzer.API.Events.SlotUnlockEvent;
@@ -148,7 +149,17 @@ public class UserData {
         if (LegendaryRunePlus.getLegendaryRunePlus().getAttributeProvider() != null) {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) {
-                LegendaryRunePlus.getLegendaryRunePlus().getAttributeProvider().update(p);
+                List<AttributeWriterData> attrs = new ArrayList<>();
+                for (Map.Entry<String,RunePageData> entry:datas.entrySet()) {
+                    List<String> pageAttrs = new ArrayList<>();
+                    entry.getValue().getAttrs().forEach((s, list) -> {
+                        pageAttrs.addAll(list);
+                    });
+                    attrs.add(new AttributeWriterData(entry.getKey(),pageAttrs));
+                }
+                RuneAttributeUpdateEvent e = new RuneAttributeUpdateEvent(p,attrs);
+                Bukkit.getPluginManager().callEvent(e);
+                LegendaryRunePlus.getLegendaryRunePlus().getAttributeProvider().update(p,e.getWriterDataList());
             }
         }
     }

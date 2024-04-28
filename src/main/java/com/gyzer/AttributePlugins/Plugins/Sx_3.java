@@ -1,6 +1,7 @@
 package com.gyzer.AttributePlugins.Plugins;
 
 import com.gyzer.AttributePlugins.AttributeProvider;
+import com.gyzer.Data.AttributeWriterData;
 import com.gyzer.LegendaryRunePlus;
 import github.saukiya.sxattribute.data.attribute.SXAttributeData;
 import org.bukkit.entity.Player;
@@ -27,11 +28,7 @@ public class Sx_3 extends AttributeProvider {
             throw new RuntimeException(e);
         }
     }
-    @Override
-    public void update(Player p) {
-        removeAttribute(p.getUniqueId());
-        setAttribute(p.getUniqueId(),getAttrs(LegendaryRunePlus.getLegendaryRunePlus().getUserDataManager().getUserData(p.getUniqueId())));
-    }
+
 
     private void removeAttribute(UUID uuid){
         try {
@@ -48,5 +45,13 @@ public class Sx_3 extends AttributeProvider {
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public void update(Player p, List<AttributeWriterData> writerDataList) {
+
+        removeAttribute(p.getUniqueId());
+        setAttribute(p.getUniqueId(),getAttrs(writerDataList));
+
     }
 }

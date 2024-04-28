@@ -75,8 +75,8 @@ public class LegendaryRunePlus extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        dataProvider.closeDataBase();
         userDataManager.disable();
+        dataProvider.closeDataBase();
     }
 
 

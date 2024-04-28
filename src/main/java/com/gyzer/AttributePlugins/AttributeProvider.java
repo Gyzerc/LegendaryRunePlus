@@ -1,7 +1,7 @@
 package com.gyzer.AttributePlugins;
 
+import com.gyzer.Data.AttributeWriterData;
 import com.gyzer.Data.Rune.RunePageData;
-import com.gyzer.Data.UserData;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -10,23 +10,17 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class AttributeProvider {
-    public abstract void update(Player p);
+    public abstract void update(Player p, List<AttributeWriterData> writerDataList);
     public static boolean isEnable(AttributePlugin attributePlugin) {
         return Bukkit.getPluginManager().isPluginEnabled(attributePlugin.getPlugin());
     }
-    public List<String> getAttrs(UserData data) {
+    public List<String> getAttrs(List<AttributeWriterData> data) {
         List<String> attrs = new ArrayList<>();
-        for (Map.Entry<String, RunePageData> entry : data.getDatas().entrySet()) {
-            RunePageData runePageData =  entry.getValue();
-            if (runePageData.getAttrs() != null && !runePageData.getAttrs().isEmpty()) {
-                for (Map.Entry<String, List<String>> attr : runePageData.getAttrs().entrySet()){
-                    List<String> l = attr.getValue();
-                    if (l != null && !l.isEmpty()) {
-                        attrs.addAll(l);
-                    }
-                }
+        data.forEach(w -> {
+            if (w.getAttrs() != null && !w.getAttrs().isEmpty()) {
+                attrs.addAll(w.getAttrs());
             }
-        }
+        });
         return attrs;
     }
 }
