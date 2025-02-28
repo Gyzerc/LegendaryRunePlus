@@ -83,8 +83,8 @@ public class UserData {
     public Optional<ItemStack> getPut(String pageName,String slotId) {
         RunePageData runePageData = datas.get(pageName);
         if (runePageData != null) {
-            HashMap<String,ItemStack> map = runePageData.getPut();
-            return map.containsKey(slotId) ? Optional.of(map.get(slotId)) : Optional.empty();
+            HashMap<String,UUID> map = runePageData.getPut();
+            return map.containsKey(slotId) ? LegendaryRunePlus.getLegendaryRunePlus().getPlayerRuneItemManager().getItem(map.get(slotId)) : Optional.empty();
         }
         return Optional.empty();
     }

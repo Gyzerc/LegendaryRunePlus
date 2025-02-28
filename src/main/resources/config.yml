@@ -1,5 +1,5 @@
 #挂钩的属性插件
-#可选： AP3 / AP2 / SX3 / SX2
+#可选： AP3 / AP2 / SX3 / SX2 / MYTHICLIB
 AttributePlugin: AP3
 #数据存储方法： MySQL / SQLite
 Store: SQLite

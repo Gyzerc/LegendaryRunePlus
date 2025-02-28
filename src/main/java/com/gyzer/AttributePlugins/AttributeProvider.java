@@ -6,6 +6,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,7 +15,7 @@ public abstract class AttributeProvider {
     public static boolean isEnable(AttributePlugin attributePlugin) {
         return Bukkit.getPluginManager().isPluginEnabled(attributePlugin.getPlugin());
     }
-    public List<String> getAttrs(List<AttributeWriterData> data) {
+    protected List<String> getAttrs(List<AttributeWriterData> data) {
         List<String> attrs = new ArrayList<>();
         data.forEach(w -> {
             if (w.getAttrs() != null && !w.getAttrs().isEmpty()) {
@@ -22,5 +23,18 @@ public abstract class AttributeProvider {
             }
         });
         return attrs;
+    }
+    protected HashMap<String,Double> getAttrs_MythicLib(List<AttributeWriterData> data) {
+        HashMap<String,Double> maps = new HashMap<>();
+        data.forEach(attributeWriterData -> {
+            if (attributeWriterData.getAttrs() != null && !attributeWriterData.getAttrs().isEmpty()) {
+                attributeWriterData.getAttrs().forEach(s -> {
+                    if (s.contains(":")) {
+                        maps.put(s.substring(0,s.indexOf(":")),Double.parseDouble(s.substring(s.indexOf(":")+1)));
+                    }
+                });
+            }
+        });
+        return maps;
     }
 }

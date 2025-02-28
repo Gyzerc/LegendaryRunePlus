@@ -85,7 +85,7 @@ public class Rune {
         return attrs;
     }
     public ItemStack generate(int level) {
-        List<String> attr = generateAttrs(level,attrs);
+        ItemAttrGenerate generate = new ItemAttrGenerate(level,attrs);
         double chance = Double.parseDouble(generateDouble(this.chance,level));
 
         ItemStack i = new ItemStack(material,1,(short) data);
@@ -94,7 +94,7 @@ public class Rune {
         List<String> lore = new ArrayList<>();
         for (String l : new ArrayList<>(this.lore)) {
             if (l.equals("%attr%")) {
-                lore.addAll(attr);
+                lore.addAll(generate.getDisplay());
             } else {
                 lore.add(l.replace("%chance%",String.valueOf(chance)));
             }
@@ -110,19 +110,10 @@ public class Rune {
             nbtItem.setString("LegendaryRunePlus_Type",this.type);
             nbtItem.setInteger("LegendaryRunePlus_Level",level);
             nbtItem.setDouble("LegendaryRunePlus_Chance",chance);
-            nbtItem.setString("LegendaryRunePlus_Attrs",new Gson().toJson(attr));
+            nbtItem.setString("LegendaryRunePlus_Attrs",new Gson().toJson(generate.getNbt()));
         });
 
         return i;
-    }
-
-    private List<String> generateAttrs(int level, List<String> attrs) {
-        List<String> list = new ArrayList<>();
-        for (String l : new ArrayList<>(attrs)) {
-            String mathStr = getMathStr(l);
-            list.add(l.replace("{"+mathStr+"}",generateDouble(mathStr,level)));
-        }
-        return list;
     }
 
     private String generateDouble(String mathStr, int level) {
@@ -192,4 +183,34 @@ public class Rune {
         return 0.0;
     }
 
+    public class ItemAttrGenerate {
+        List<String> display;
+        List<String> nbt;
+        public ItemAttrGenerate(int level,List<String> input) {
+            List<String> attr = new ArrayList<>();
+            List<String> hide = new ArrayList<>();
+            for (String l : new ArrayList<>(input)) {
+                String mathStr = getMathStr(l);
+                String value = generateDouble(mathStr,level);
+                String set_display = l.replace("{"+mathStr+"}",value);
+                String set_nbt = set_display;
+                if (l.contains("||")) {
+                    set_display = set_display.substring(0,set_display.indexOf("|"));
+                    set_nbt = set_nbt.substring(set_nbt.lastIndexOf("|")+1) + ":" + value;
+                }
+                attr.add(set_display);
+                hide.add(set_nbt);
+            }
+            this.display = attr;
+            this.nbt = hide;
+        }
+
+        public List<String> getDisplay() {
+            return display;
+        }
+
+        public List<String> getNbt() {
+            return nbt;
+        }
+    }
 }

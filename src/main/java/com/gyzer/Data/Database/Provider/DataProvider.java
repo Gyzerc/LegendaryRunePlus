@@ -10,19 +10,33 @@ import org.bukkit.util.io.BukkitObjectOutputStream;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.sql.Connection;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class DataProvider {
+    protected DataTable PLAYER_DATA = new DataTable("LegendaryRunePlus_PlayerData",new DataProvider.Builder("LegendaryRunePlus_PlayerData")
+            .addVarcharKey("uuid",60)
+            .addTextKey("unlocks")
+            .addTextKey("attrs")
+            .addTextKey("items")
+            .addTextKey("types")
+            .build("uuid"));
+    protected DataTable ITEM_DATA = new DataTable("LegendaryRunePlus_ItemsData",new DataProvider.Builder("LegendaryRunePlus_ItemsData")
+            .addVarcharKey("uuid",60)
+            .addTextKey("item")
+            .build("uuid"));
+
     protected abstract void initDataBase() throws RuntimeException;
     public abstract void setConnection() throws SQLException;
     public abstract void closeDataBase();
     public abstract Optional<UserData> getUserData(UUID uuid);
     public abstract void saveUserData(UserData data);
     public abstract List<UUID> getUserDatas();
-    public abstract void createTable(DataTable table);
-    public abstract boolean isExist(DataTable table);
+    public abstract Optional<ItemStack> getItem(UUID uuid);
+    public abstract void setItem(UUID uuid,ItemStack i);
+    public abstract void delItem(UUID uuid);
+    public abstract Optional<ConcurrentHashMap<UUID,ItemStack>> getItems();
     public void close(Connection connection) {
         try {
             if (connection != null && !connection.isClosed()) {
@@ -30,6 +44,78 @@ public abstract class DataProvider {
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    protected void createDataTable(Connection connection, DataTable table) {
+        if (connection != null) {
+            Statement statement = null;
+            try {
+                statement = connection.createStatement();
+                statement.executeUpdate(table.getBuilder().toString());
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    protected Optional<ResultSet> getDataStringResult(Connection connection, DataProvider.Builder builder, String target) {
+        if (connection != null) {
+            PreparedStatement statement = null;
+            ResultSet resultSet = null;
+            try {
+                statement = connection.prepareStatement("SELECT * FROM " + builder.getTableName() + " WHERE `" + builder.getMainKey() + "` = '" + target + "' LIMIT 1;");
+                resultSet = statement.executeQuery();
+                while (resultSet.next()) {
+                    return Optional.of(resultSet);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return Optional.empty();
+    }
+
+    protected Optional<ResultSet> getDataStrings(Connection connection, DataProvider.Builder builder) {
+        if (connection != null) {
+            PreparedStatement statement = null;
+            ResultSet rs = null;
+            try {
+                statement = connection.prepareStatement("SELECT * FROM "+builder.getTableName()+";");
+                rs = statement.executeQuery();
+                return Optional.of(rs);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return Optional.empty();
+    }
+    protected void delData(Connection connection, DataProvider.Builder builder, String target) {
+        if (connection != null) {
+            PreparedStatement statement = null;
+            try {
+                statement = connection.prepareStatement("DELETE FROM `"+builder.getTableName()+"` WHERE `"+builder.getMainKey()+"` = ?");
+                statement.setString(1, target);
+                statement.executeUpdate();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+    protected <T> void setData(Connection connection, DataProvider.Builder builder, String target, T... ts) {
+        if (connection != null) {
+            PreparedStatement ps = null;
+            try {
+                ps = connection.prepareStatement(builder.getInsertString(target));
+                int a = 1;
+                for (T t : ts) {
+                    ps.setObject(a, t);
+                    a++;
+                }
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -81,7 +167,7 @@ public abstract class DataProvider {
                 String[] args = arg.split("⁝");
                 if (args.length == 2) {
                     String pageName = args[0];
-                    HashMap<String,ItemStack> itemMap = toItemMap(args[1]);
+                    HashMap<String,UUID> itemMap = toItemMap(args[1]);
                     RunePageData runePageData = datas.getOrDefault(pageName,new RunePageData(pageName,new HashMap<>(),new HashMap<>() , new HashMap<>()));
                     runePageData.setPut(itemMap);
                     datas.put(pageName,runePageData);
@@ -114,9 +200,9 @@ public abstract class DataProvider {
             if (entry.getKey() != null && !entry.getKey().isEmpty()
             && entry.getValue() != null) {
                 builder.append(entry.getKey()).append("⁝");
-                HashMap<String, ItemStack> put = entry.getValue().getPut();
+                HashMap<String, UUID> put = entry.getValue().getPut();
                 put.forEach((s, itemStack) -> {
-                    builder.append(s).append(":").append(toItemString(itemStack)).append(",");
+                    builder.append(s).append(":").append(itemStack.toString()).append(",");
                 });
                 builder.append(";");
             }
@@ -125,7 +211,7 @@ public abstract class DataProvider {
     }
 
 
-    private String toItemString(ItemStack i) {
+    protected String toItemString(ItemStack i) {
         try (ByteArrayOutputStream byteArrayOutputStream=new ByteArrayOutputStream();
              BukkitObjectOutputStream bukkitObjectOutputStream=new BukkitObjectOutputStream(byteArrayOutputStream)){
             bukkitObjectOutputStream.writeObject(i);
@@ -177,22 +263,22 @@ public abstract class DataProvider {
         }
         return new HashMap<>();
     }
-    private HashMap<String,ItemStack> toItemMap(String str) {
-        HashMap<String,ItemStack> map = new HashMap<>();
+    private HashMap<String,UUID> toItemMap(String str) {
+        HashMap<String,UUID> map = new HashMap<>();
         if (str != null && !str.isEmpty()) {
             String[] args = str.split(",");
             if (args.length > 0) {
                 for (String child : args) {
                     String[] values = child.split(":");
                     if (values.length == 2) {
-                        map.put(values[0],toItem(values[1]));
+                        map.put(values[0],UUID.fromString(values[1]));
                     }
                 }
             }
         }
         return map;
     }
-    private ItemStack toItem(String arg)
+    protected ItemStack toItem(String arg)
     {
         byte[] bytes=Base64.getDecoder().decode(arg);
         try (ByteArrayInputStream byteArrayOutputStream=new ByteArrayInputStream(bytes);
@@ -202,5 +288,151 @@ public abstract class DataProvider {
             ex.printStackTrace();
         }
         return null;
+    }
+
+
+
+
+    public static class Builder {
+        private String tableName;
+        private String mainKey;
+        private StringBuilder stringBuilder;
+        private List<String> keys;
+
+        public Builder(String tableName) {
+            this.keys = new ArrayList<>();
+            this.tableName = tableName;
+            stringBuilder = new StringBuilder("CREATE TABLE IF NOT EXISTS "+tableName+" (");
+        }
+
+        public Builder addTextKey(String keyName){
+            if (!stringBuilder.toString().endsWith(",") && !stringBuilder.toString().endsWith("(")){
+                stringBuilder.append(",");
+            }
+            stringBuilder.append("").append(keyName).append(" TEXT DEFAULT NULL");
+            keys.add(keyName);
+            return this;
+        }
+
+        public Builder addUUIDKey(String keyName){
+            if (!stringBuilder.toString().endsWith(",") && !stringBuilder.toString().endsWith("(")){
+                stringBuilder.append(",");
+            }
+            stringBuilder.append("").append(keyName).append(" UUID DEFAULT NULL");
+            keys.add(keyName);
+            return this;
+        }
+
+        public Builder addBlobKey(String keyName){
+            if (!stringBuilder.toString().endsWith(",") && !stringBuilder.toString().endsWith("(")){
+                stringBuilder.append(",");
+            }
+            stringBuilder.append("").append(keyName).append(" BLOB DEFAULT NULL");
+            keys.add(keyName);
+            return this;
+        }
+
+        public Builder addIntegerKey(String keyName){
+            if (!stringBuilder.toString().endsWith(",") && !stringBuilder.toString().endsWith("(")){
+                stringBuilder.append(",");
+            }
+            stringBuilder.append("`").append(keyName).append("` INTEGER NOT NULL");
+            keys.add(keyName);
+            return this;
+        }
+
+        public Builder addDoubleKey(String keyName){
+            if (!stringBuilder.toString().endsWith(",") && !stringBuilder.toString().endsWith("(")){
+                stringBuilder.append(",");
+            }
+            stringBuilder.append("`").append(keyName).append("` DOUBLE NOT NULL");
+            keys.add(keyName);
+            return this;
+        }
+        public Builder addLongKey(String keyName){
+            if (!stringBuilder.toString().endsWith(",") && !stringBuilder.toString().endsWith("(")){
+                stringBuilder.append(",");
+            }
+            stringBuilder.append("`").append(keyName).append("` LONG NOT NULL");
+            keys.add(keyName);
+            return this;
+        }
+        public Builder addVarcharKey(String keyName,int length){
+            if (!stringBuilder.toString().endsWith(",") && !stringBuilder.toString().endsWith("(")){
+                stringBuilder.append(",");
+            }
+            stringBuilder.append("`").append(keyName).append("` varchar("+length+") NOT NULL");
+            keys.add(keyName);
+            return this;
+        }
+        public Builder addBooleanKey(String keyName){
+            if (!stringBuilder.toString().endsWith(",") && !stringBuilder.toString().endsWith("(")){
+                stringBuilder.append(",");
+            }
+            stringBuilder.append("`").append(keyName).append("` BOOLEAN NOT NULL");
+            keys.add(keyName);
+            return this;
+        }
+        public Builder build(String mainKey){
+            if (!stringBuilder.toString().endsWith(",") && !stringBuilder.toString().endsWith("(")){
+                stringBuilder.append(",");
+            }
+            this.mainKey = mainKey;
+            stringBuilder.append("PRIMARY KEY (`"+mainKey+"`));");
+            return this;
+        }
+
+        public String getTableName() {
+            return tableName;
+        }
+
+        public String getMainKey() {
+            return mainKey;
+        }
+
+        @Override
+        public String toString(){
+            return stringBuilder.toString();
+        }
+
+        public String getInsertString(String target) { //`
+            StringBuilder main = new StringBuilder("REPLACE INTO "+tableName+" ");
+            StringBuilder keys = new StringBuilder("(");
+            StringBuilder keys_unknow = new StringBuilder("(");
+            for (int i =0 ; i < this.keys.size() ; i ++) {
+                keys.append("`").append(this.keys.get(i)).append("`");
+                keys_unknow.append("?");
+                if (i == this.keys.size() - 1 ) {
+                    keys.append(")");
+                    keys_unknow.append(")");
+                    break;
+                } else {
+                    keys.append(",");
+                    keys_unknow.append(",");
+                }
+            }
+            main.append(keys).append(" VALUES ").append(keys_unknow);
+            return main.toString();
+        }
+
+    }
+
+    public static class DataTable {
+
+        private String tableName;
+        private DataProvider.Builder builder;
+
+        public DataTable(String tableName, DataProvider.Builder builder) {
+            this.tableName = tableName;
+            this.builder = builder;
+        }
+
+        public String getTableName() {
+            return tableName;
+        }
+
+        public DataProvider.Builder getBuilder() {
+            return builder;
+        }
     }
 }

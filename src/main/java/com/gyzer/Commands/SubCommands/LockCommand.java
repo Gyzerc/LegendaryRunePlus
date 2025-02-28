@@ -33,6 +33,9 @@ public class LockCommand extends com.gyzer.Commands.Builder.CommandProvider {
                 sender.sendMessage(configManager.lang_plugin + configManager.lang_not_has_slot);
                 return;
             }
+
+
+
             sender.sendMessage(configManager.lang_plugin + configManager.lang_not_has_page);
             return;
         }

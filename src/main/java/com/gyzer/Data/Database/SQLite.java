@@ -1,26 +1,146 @@
 package com.gyzer.Data.Database;
 
 import com.gyzer.Data.Database.Provider.DataProvider;
-import com.gyzer.Data.Database.Provider.DataTable;
 import com.gyzer.Data.UserData;
 import com.gyzer.LegendaryRunePlus;
+import org.bukkit.inventory.ItemStack;
+import org.serverct.ersha.jd.R;
 
 import java.io.File;
 import java.io.IOException;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class SQLite extends DataProvider {
     private final LegendaryRunePlus legendaryRunePlus = LegendaryRunePlus.getLegendaryRunePlus();
     private File folder;
+    private Connection connection;
 
     public SQLite() {
+        setConnection();
         initDataBase();
     }
 
     @Override
     protected void initDataBase() throws RuntimeException {
+        createDataTable(getConnection(),PLAYER_DATA);
+        createDataTable(getConnection(),ITEM_DATA);
+    }
+    public Connection getConnection() {
+        return connection;
+    }
+
+    @Override
+    public Optional<UserData> getUserData(UUID uuid) {
+        Connection connection = getConnection();
+        try {
+            Optional<ResultSet> optionalResultSet = getDataStringResult(connection,PLAYER_DATA.getBuilder(), uuid.toString());
+            if (optionalResultSet.isPresent()) {
+                ResultSet rs = optionalResultSet.get();
+                String unlockStr = rs.getString("unlocks");
+                HashMap<String,List<String>> unlocks = toHashMap(unlockStr);
+                String attr = rs.getString("attrs");
+                String put = rs.getString("items");
+                String types = rs.getString("types");
+                return Optional.of(new UserData(uuid,unlocks,toRuneData(attr,put,types)));
+            }
+        } catch (SQLException ex) {
+            legendaryRunePlus.info("获取玩家数据时出错！ ",Level.SEVERE,ex);
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public void saveUserData(UserData data) {
+        setData(getConnection(),PLAYER_DATA.getBuilder(), data.getUuid().toString(),
+                data.getUuid().toString(),
+                ListMapToString(data.getUnlocks()),
+                toStringAttrs(data.getDatas()),
+                toPutsString(data.getDatas()),
+                toStringTypes(data.getDatas()));
+    }
+
+    @Override
+    public List<UUID> getUserDatas() {
+        Connection connection = getConnection();
+        List<UUID> users = new ArrayList<>();
+        try {
+            Optional<ResultSet> optionalResultSet = getDataStrings(connection,PLAYER_DATA.getBuilder());
+            if (optionalResultSet.isPresent()) {
+                ResultSet resultSet = optionalResultSet.get();
+                while (resultSet.next()) {
+                    String uid = resultSet.getString("uuid");
+                    users.add(UUID.fromString(uid));
+                }
+            }
+        }
+        catch (SQLException e) {
+            legendaryRunePlus.info("获取所有用户失败！",Level.SEVERE,e);
+        }
+        return users;
+    }
+
+    @Override
+    public Optional<ItemStack> getItem(UUID uuid) {
+        Connection connection = getConnection();
+        try {
+            Optional<ResultSet> optionalResultSet = getDataStringResult(connection,ITEM_DATA.getBuilder(),uuid.toString());
+            if (optionalResultSet.isPresent()) {
+                ResultSet resultSet = optionalResultSet.get();
+                String itemStr = resultSet.getString("item");
+                if (itemStr != null && !itemStr.isEmpty()) {
+                    ItemStack i = toItem(itemStr);
+                    if (i != null) {
+                        return Optional.of(i);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public void setItem(UUID uuid, ItemStack i) {
+        setData(getConnection(), ITEM_DATA.getBuilder(), uuid.toString(), uuid.toString(), toItemString(i));
+    }
+
+    @Override
+    public void delItem(UUID uuid) {
+        delData(getConnection(),ITEM_DATA.getBuilder(),uuid.toString());
+    }
+
+    @Override
+    public Optional<ConcurrentHashMap<UUID, ItemStack>> getItems() {
+        Connection connection = getConnection();
+        ConcurrentHashMap<UUID,ItemStack> items = new ConcurrentHashMap<>();
+        try {
+            Optional<ResultSet> optionalResultSet = getDataStrings(connection,ITEM_DATA.getBuilder());
+            if (optionalResultSet.isPresent()) {
+                ResultSet rs = optionalResultSet.get();
+                while (rs.next()) {
+                    UUID uuid = UUID.fromString(rs.getString("uuid"));
+                    String str = rs.getString("item");
+                    if (str != null && !str.isEmpty()) {
+                        ItemStack i = toItem(str);
+                        if (i != null) {
+                            items.put(uuid,i);
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return Optional.of(items);
+    }
+
+
+    @Override
+    public void setConnection() {
         folder = new File(legendaryRunePlus.getDataFolder(),  "data.db");
         if (!folder.exists()){
             try {
@@ -30,124 +150,25 @@ public class SQLite extends DataProvider {
                 e.printStackTrace();
             }
         }
-        createTable(DataTable.Player_Data);
-    }
-    public Connection getConnection() throws SQLException {
         try {
             Class.forName("org.sqlite.JDBC");
-            return DriverManager.getConnection("jdbc:sqlite:" + folder);
+            connection = DriverManager.getConnection("jdbc:sqlite:" + folder);
+            legendaryRunePlus.msg("&d成功连接 &eSQLite &d数据库.");
         } catch (SQLException | ClassNotFoundException ex) {
             ex.printStackTrace();
         }
-        return null;
-    }
-
-    @Override
-    public Optional<UserData> getUserData(UUID uuid) {
-        Connection connection = null;
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        try {
-            connection = getConnection();
-            ps = connection.prepareStatement("SELECT * FROM "+DataTable.Player_Data.getName()+" WHERE uuid = '" + uuid.toString() + "' LIMIT 1;");
-            rs = ps.executeQuery();
-            while (rs.next()) {
-                String unlockStr = rs.getString("unlocks");
-                HashMap<String,List<String>> unlocks = toHashMap(unlockStr);
-
-                String attr = rs.getString("attrs");
-                String put = rs.getString("items");
-                String types = rs.getString("types");
-                return Optional.of(new UserData(uuid,unlocks,toRuneData(attr,put,types)));
-            }
-        } catch (SQLException ex) {
-            legendaryRunePlus.info("获取玩家数据时出错！ ", Level.SEVERE,ex);
-        } finally {
-            close(connection);
-        }
-        return Optional.empty();
-    }
-
-    @Override
-    public void saveUserData(UserData data) {
-        PreparedStatement ps = null;
-        Connection connection = null;
-        try {
-            connection = getConnection();
-            ps = connection.prepareStatement("REPLACE INTO "+ DataTable.Player_Data.getName()+" (uuid,unlocks,attrs,items,types) VALUES(?,?,?,?,?)");
-            ps.setString(1, data.getUuid().toString());
-            ps.setString(2, ListMapToString(data.getUnlocks()));
-            ps.setString(3, toStringAttrs(data.getDatas()));
-            ps.setString(4, toPutsString(data.getDatas()));
-            ps.setString(5, toStringTypes(data.getDatas()));
-            ps.executeUpdate();
-            close(connection);
-        } catch (SQLException ex) {
-            legendaryRunePlus.info("保存玩家数据时出错！ ",Level.SEVERE,ex);
-        }
-    }
-
-    @Override
-    public List<UUID> getUserDatas() {
-        Connection connection = null;
-        PreparedStatement statement = null;
-        List<UUID> users = new ArrayList<>();
-        try {
-            connection = getConnection();
-            statement = connection.prepareStatement("SELECT `uuid` FROM "+ DataTable.Player_Data.getName()+";");
-            ResultSet resultSet = statement.executeQuery();
-            while (resultSet.next()) {
-                String uid = resultSet.getString("uuid");
-                users.add(UUID.fromString(uid));
-            }
-            close(connection);
-        }
-        catch (SQLException e) {
-            legendaryRunePlus.info("获取所有用户失败！",Level.SEVERE,e);
-        }
-        return users;
-    }
-
-    @Override
-    public void createTable(DataTable table) {
-        Connection connection = null;
-        Statement stat = null;
-        if (!isExist(table)){
-            try {
-                connection = getConnection();
-                stat = connection.createStatement();
-                stat.executeUpdate(table.getBuilder().toString());
-                close(connection);
-            } catch (SQLException e) {
-                legendaryRunePlus.info("创建 SQLite 数据表失败",Level.SEVERE,e);
-                return;
-            }
-        }
-        legendaryRunePlus.msg("&d成功连接 &eSQLite &d数据库.");
-    }
-
-    @Override
-    public boolean isExist(DataTable table) {
-        if (!folder.exists()){
-            return false;
-        }
-        try {
-            Connection connection = getConnection();
-            PreparedStatement statement = connection.prepareStatement("SELECT `"+table.getBuilder().getMainKey()+"` FROM `"+table.getName()+"` LIMIT 1;");
-            statement.executeQuery();
-            close(connection);
-            return true;
-        } catch (SQLException e) {
-            return false;
-        }
-    }
-    @Override
-    public void setConnection() throws SQLException {
-
     }
 
     @Override
     public void closeDataBase() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+                legendaryRunePlus.msg("&d成功断开 &eSQLite &d数据库连接.");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

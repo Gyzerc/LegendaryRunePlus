@@ -15,7 +15,7 @@ settings:
   level: 5
   #更新的属性
   attrs:
-    - ' &7- 攻击力 &a+{%level%*5}'
+    - ' &7- 攻击力 &a+{%level%*5}||ATTACK_DAMAGE'
   #镶嵌成功率
   chance: '100 - (%level% * 10)'
   #同一页铭文也中最多能镶嵌多少个该类型的铭文

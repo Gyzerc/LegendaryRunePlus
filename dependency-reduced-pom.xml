@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.gyzer</groupId>
   <artifactId>LegendaryRunePlus</artifactId>
-  <version>1.0.5-SNAPSHOT</version>
+  <version>2.0.1-SNAPSHOT</version>
   <build>
     <plugins>
       <plugin>
@@ -90,6 +90,13 @@
       <artifactId>playerpoints</artifactId>
       <version>3.2.5</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.lume</groupId>
+      <artifactId>MythicLib</artifactId>
+      <version>1.7</version>
+      <scope>system</scope>
+      <systemPath>${basedir}/src/depends/MythicLib-1.7.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>org.serverct.ersha</groupId>

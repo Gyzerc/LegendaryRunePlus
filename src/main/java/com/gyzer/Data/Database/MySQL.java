@@ -2,15 +2,17 @@ package com.gyzer.Data.Database;
 
 import com.google.gson.Gson;
 import com.gyzer.Data.Database.Provider.DataProvider;
-import com.gyzer.Data.Database.Provider.DataTable;
 import com.gyzer.Data.UserData;
 import com.gyzer.LegendaryRunePlus;
+import com.gyzer.Utils.ItemUtils;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.inventory.ItemStack;
 
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class MySQL extends DataProvider {
@@ -23,18 +25,23 @@ public class MySQL extends DataProvider {
 
     @Override
     protected void initDataBase() throws RuntimeException {
+        setConnection();
+        //创建数据库表
+        Connection connection = null;
         try {
-            setConnection();
-            createTable(DataTable.Player_Data);
+            connection = connectPool.getConnection();
+            createDataTable(connection,PLAYER_DATA);
+            createDataTable(connection,ITEM_DATA);
             legendaryRunePlus.msg("&d成功连接 &EMySQL &D数据库.");
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        } finally {
+            close(connection);
         }
-
     }
 
     @Override
-    public void setConnection() throws SQLException {
+    public void setConnection() {
         HikariConfig hikariConfig = new HikariConfig();
         hikariConfig.setDriverClassName("com.mysql.jdbc.Driver");
         ConfigurationSection section = legendaryRunePlus.getConfig().getConfigurationSection("HikariCP");
@@ -58,39 +65,7 @@ public class MySQL extends DataProvider {
         legendaryRunePlus.info("config.yml中缺少了 HikariCP 配置,请重新生成配置文件进行修改..", Level.SEVERE);
     }
 
-    @Override
-    public void createTable(DataTable table) {
-        Connection connection = null;
-        Statement stat = null;
-        if (!isExist(table)){
-            try {
-                connection = connectPool.getConnection();
-                stat = connection.createStatement();
-                stat.executeUpdate(table.getBuilder().toString());
-                close(connection);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-            return;
-        }
-    }
-    @Override
-    public boolean isExist(DataTable table) {
-        if (connectPool == null){
-            return false;
-        }
-        Connection connection = null;
-        try {
-            connection = connectPool.getConnection();
-            PreparedStatement statement = connection.prepareStatement("SELECT `"+table.getBuilder().getMainKey()+"` FROM `"+table.getName()+"` LIMIT 1;");
-            statement.executeQuery();
-            return true;
-        } catch (SQLException e) {
-            return false;
-        } finally {
-            close(connection);
-        }
-    }
+
 
 
 
@@ -105,16 +80,13 @@ public class MySQL extends DataProvider {
     @Override
     public Optional<UserData> getUserData(UUID uuid) {
         Connection connection = null;
-        PreparedStatement ps = null;
-        ResultSet rs = null;
         try {
             connection = connectPool.getConnection();
-            ps = connection.prepareStatement("SELECT * FROM "+DataTable.Player_Data.getName()+" WHERE uuid = '" + uuid.toString() + "' LIMIT 1;");
-            rs = ps.executeQuery();
-            while (rs.next()) {
+            Optional<ResultSet> optionalResultSet = getDataStringResult(connection,PLAYER_DATA.getBuilder(), uuid.toString());
+            if (optionalResultSet.isPresent()) {
+                ResultSet rs = optionalResultSet.get();
                 String unlockStr = rs.getString("unlocks");
                 HashMap<String,List<String>> unlocks = toHashMap(unlockStr);
-
                 String attr = rs.getString("attrs");
                 String put = rs.getString("items");
                 String types = rs.getString("types");
@@ -130,35 +102,35 @@ public class MySQL extends DataProvider {
 
     @Override
     public void saveUserData(UserData data) {
-        PreparedStatement ps = null;
         Connection connection = null;
         try {
             connection = connectPool.getConnection();
-            ps = connection.prepareStatement("REPLACE INTO "+ DataTable.Player_Data.getName()+" (uuid,unlocks,attrs,items,types) VALUES(?,?,?,?,?)");
-            ps.setString(1, data.getUuid().toString());
-            ps.setString(2, ListMapToString(data.getUnlocks()));
-            ps.setString(3, toStringAttrs(data.getDatas()));
-            ps.setString(4, toPutsString(data.getDatas()));
-            ps.setString(5, toStringTypes(data.getDatas()));
-            ps.executeUpdate();
-            close(connection);
+            setData(connection,PLAYER_DATA.getBuilder(), data.getUuid().toString(),
+                    data.getUuid().toString(),
+                    ListMapToString(data.getUnlocks()),
+                    toStringAttrs(data.getDatas()),
+                    toPutsString(data.getDatas()),
+                    toStringTypes(data.getDatas()));
         } catch (SQLException ex) {
             legendaryRunePlus.info("保存玩家数据时出错！ ",Level.SEVERE,ex);
+        } finally {
+            close(connection);
         }
     }
 
     @Override
     public List<UUID> getUserDatas() {
         Connection connection = null;
-        PreparedStatement statement = null;
         List<UUID> users = new ArrayList<>();
         try {
             connection = connectPool.getConnection();
-            statement = connection.prepareStatement("SELECT `uuid` FROM "+ DataTable.Player_Data.getName()+";");
-            ResultSet resultSet = statement.executeQuery();
-            while (resultSet.next()) {
-                String uid = resultSet.getString("uuid");
-                users.add(UUID.fromString(uid));
+            Optional<ResultSet> optionalResultSet = getDataStrings(connection,PLAYER_DATA.getBuilder());
+            if (optionalResultSet.isPresent()) {
+                ResultSet resultSet = optionalResultSet.get();
+                while (resultSet.next()) {
+                    String uid = resultSet.getString("uuid");
+                    users.add(UUID.fromString(uid));
+                }
             }
         }
         catch (SQLException e) {
@@ -169,4 +141,83 @@ public class MySQL extends DataProvider {
         return users;
     }
 
+    @Override
+    public Optional<ItemStack> getItem(UUID uuid) {
+        Connection connection = null;
+        try {
+            connection = connectPool.getConnection();
+            Optional<ResultSet> optionalResultSet = getDataStringResult(connection,ITEM_DATA.getBuilder(),uuid.toString());
+            if (optionalResultSet.isPresent()) {
+                ResultSet resultSet = optionalResultSet.get();
+                String itemStr = resultSet.getString("item");
+                if (itemStr != null && !itemStr.isEmpty()) {
+                    ItemStack i = toItem(itemStr);
+                    if (i != null) {
+                        return Optional.of(i);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            close(connection);
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public void setItem(UUID uuid, ItemStack i) {
+        if (i != null) {
+            Connection connection = null;
+            try {
+                connection = connectPool.getConnection();
+                setData(connection, ITEM_DATA.getBuilder(), uuid.toString(), uuid.toString(), toItemString(i));
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            } finally {
+                close(connection);
+            }
+        }
+    }
+
+    @Override
+    public void delItem(UUID uuid) {
+        Connection connection = null;
+        try {
+            connection = connectPool.getConnection();
+            delData(connection,ITEM_DATA.getBuilder(),uuid.toString());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            close(connection);
+        }
+    }
+
+    @Override
+    public Optional<ConcurrentHashMap<UUID, ItemStack>> getItems() {
+        Connection connection = null;
+        ConcurrentHashMap<UUID,ItemStack> items = new ConcurrentHashMap<>();
+        try {
+            connection = connectPool.getConnection();
+            Optional<ResultSet> optionalResultSet = getDataStrings(connection,ITEM_DATA.getBuilder());
+            if (optionalResultSet.isPresent()) {
+                ResultSet rs = optionalResultSet.get();
+                while (rs.next()) {
+                    UUID uuid = UUID.fromString(rs.getString("uuid"));
+                    String str = rs.getString("item");
+                    if (str != null && !str.isEmpty()) {
+                        ItemStack i = toItem(str);
+                        if (i != null) {
+                            items.put(uuid,i);
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            close(connection);
+        }
+        return Optional.of(items);
+    }
 }

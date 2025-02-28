@@ -1,7 +1,7 @@
 package com.gyzer.AttributePlugins;
 
 public enum AttributePlugin {
-    AP2("AttributePlus"),AP3("AttributePlus"),SX2("SX-Attribute"),SX3("SX-Attribute");
+    AP2("AttributePlus"),AP3("AttributePlus"),SX2("SX-Attribute"),SX3("SX-Attribute"),MYTHICLIB("MythicLib");
 
     private String plugin;
 

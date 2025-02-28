@@ -1,13 +1,13 @@
 name: LegendaryRunePlus
 main: com.gyzer.LegendaryRunePlus
-version: 1.0.5
-api-version: 1.13
+version: 2.0.1
 depend:
   - Vault
 softdepend:
   - PlayerPoints
   - SX-Attribute
   - AttributePlus
+  - MythicLib
 commands:
   LegendaryRunePlus:
     aliases:
